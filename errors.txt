@@ -1,0 +1,43 @@
+
+ERROR Title: Title: Kafka Stream Skipping Existing Messages Due to Default startingOffsets=latest
+Problem: Kafka structured streaming job created Iceberg table metadata but stored zero rows. `numInputRows` was 0 across batches despite events present in Kafka topic.
+Root Cause: `startingOffsets` defaulted to "latest", so stream skipped all pre-existing messages (offsets 0-90/0-68/0-79) and only listened for new ones. Checkpoint further locked in this "latest" starting point on reruns.
+Solution: Set `.option("startingOffsets", "earliest")` on Kafka read, and use a fresh checkpoint path (e.g. `checkpoints/events-v1`) since the old checkpoint had already persisted the "latest" offset decision.
+Verification: Checked `query.lastProgress()` — startOffset/endOffset/latestOffset were identical, confirming stream was caught up with no new data, not erroring.
+
+
+
+Should work on:
+                    CURRENT
+                       ↓
+              Kafka → Spark → Iceberg
+                       ↓
+                1. Checkpoints
+                       ↓
+                2. Failure recovery
+                       ↓
+                3. Duplicates
+                       ↓
+                4. Late events
+                       ↓
+                5. Bronze/Silver/Gold
+                       ↓
+                6. Iceberg partitions
+                       ↓
+                7. Schema evolution
+                       ↓
+                8. Time travel
+                       ↓
+                9. Compaction
+                       ↓
+               10. Batch + Streaming
+                       ↓
+               11. CDC / Debezium
+                       ↓
+               12. Performance testing
+
+
+How Trino Works:
+Trino is added as the SQL query and serving layer on top of the existing Iceberg tables. Trino uses the Iceberg connector with Hive 
+Metastore as its catalog, while the actual table data remains in MinIO. This allows users, BI tools, dashboards, and other consumers 
+to query the processed lakehouse data through SQL without using Spark for every query.

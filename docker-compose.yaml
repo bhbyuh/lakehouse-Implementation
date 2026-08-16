@@ -1,20 +1,6 @@
 version: "3.8"
 
 services:
-  postgres_DB:
-    image: postgres:15
-    container_name: postgres
-    environment:
-      POSTGRES_USER: hive
-      POSTGRES_PASSWORD: hive
-      POSTGRES_DB: metastore
-    ports:
-      - "5434:5432"
-    networks:
-      - spark-network
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-
   spark-master:
     image: apache/spark:4.1.0
     hostname: spark-master
@@ -185,9 +171,23 @@ services:
       exit 0;
       "
 
+  trino:
+    image: trinodb/trino:latest
+    container_name: trino
+    ports:
+      - "8085:8080"
+    volumes:
+      - ./trino/etc:/etc/trino
+    depends_on:
+      - minio
+      - hive-metastore
+    networks:
+      - spark-network
+
 networks:
   spark-network:
-    driver: bridge
+    name: lakehouse-network
+    external: true
 
 volumes:
     minio_data:
