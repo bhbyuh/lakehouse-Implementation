@@ -13,7 +13,7 @@ services:
       - "8080:8080"
       - "7077:7077"
     volumes:
-      - ./app:/app
+      - ./code:/code
       - ./data:/data
 
 
@@ -34,7 +34,7 @@ services:
       SPARK_WORKER_CORES: 2
       SPARK_WORKER_MEMORY: 2g
     volumes:
-      - ./app:/app
+      - ./code:/code
       - ./data:/data
 
 
@@ -55,7 +55,7 @@ services:
       SPARK_WORKER_CORES: 2
       SPARK_WORKER_MEMORY: 2g
     volumes:
-      - ./app:/app
+      - ./code:/code
       - ./data:/data
 
   broker:
@@ -102,7 +102,7 @@ services:
       - "8888:8888"
       - "4040:4040"
     volumes:
-      - ./app:/app
+      - ./code:/code
       - ./data:/data
     networks:
       - spark-network
