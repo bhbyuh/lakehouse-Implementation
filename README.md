@@ -82,7 +82,7 @@ This is a hands-on learning project designed to explore and practice:
 ### 1. Clone the Repository
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/bhbyuh/lakehouse-Implementation.git
 cd lakehouse-Implementation
 ```
 
