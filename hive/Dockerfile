@@ -1,9 +1,6 @@
-FROM apache/hive:4.0.0
+FROM apache/hive:4.2.1
 
 USER root
-
-RUN apt-get update && \
-    apt-get install -y curl
 
 RUN curl -L \
 https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/3.3.6/hadoop-aws-3.3.6.jar \
