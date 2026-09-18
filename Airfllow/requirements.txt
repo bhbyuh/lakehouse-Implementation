@@ -1,0 +1,6 @@
+apache-airflow-providers-apache-spark==5.*
+apache-airflow-providers-trino==6.*
+apache-airflow-providers-amazon==9.*
+# supplies the spark-submit binary inside the Airflow image;
+# must match the cluster image (apache/spark:4.1.0)
+pyspark==4.1.0

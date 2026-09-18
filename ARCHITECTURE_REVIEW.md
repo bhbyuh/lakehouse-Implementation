@@ -95,47 +95,6 @@ a notebook kernel. That is the definition of "temporary plugin type" rather than
 
 Ordered by severity. Each has *what it is now* → *why it bites* → *what the standard is*.
 
-
----
-
-### 🟡 F-14 — Airflow is installed but not connected to anything
-
-- `Airfllow/dags/` **does not exist**. There are zero DAGs. Docker will create the directory root-owned on
-  first `up`, which then causes permission errors when the worker (UID 50000) tries to write.
-- `_PIP_ADDITIONAL_REQUIREMENTS` is empty and there is no custom image, so
-  `apache-airflow-providers-apache-spark` and `apache-airflow-providers-trino` are **not installed**. There is
-  currently no way for Airflow to talk to Spark or Trino.
-- No Airflow **Connections** are provisioned for `spark_default`, `trino_default`, or MinIO — so even with
-  providers installed, every DAG would need hardcoded hosts, repeating F-10's mistake in a fourth place.
-- The directory is spelled **`Airfllow`** (three l's). Cosmetic, but it's in every path and every command you
-  will ever type, and it looks careless in a portfolio repo.
-
-**Standard:** a custom Airflow image with pinned providers, plus connections provisioned declaratively.
-
-```dockerfile
-# Airflow/Dockerfile
-FROM apache/airflow:3.2.0
-COPY requirements.txt /tmp/requirements.txt
-RUN pip install --no-cache-dir -r /tmp/requirements.txt
-```
-```
-# Airflow/requirements.txt
-apache-airflow-providers-apache-spark==5.*
-apache-airflow-providers-trino==6.*
-apache-airflow-providers-amazon==9.*
-```
-
-Connections as env vars (URI form) so they're reproducible and never stored by hand in the UI:
-
-```yaml
-    AIRFLOW_CONN_SPARK_DEFAULT: 'spark://spark-master:7077'
-    AIRFLOW_CONN_TRINO_DEFAULT: 'trino://trino@trino:8080/iceberg'
-    AIRFLOW_CONN_MINIO_S3: 'aws://${MINIO_ROOT_USER}:${MINIO_ROOT_PASSWORD}@?endpoint_url=http%3A%2F%2Fminio%3A9000'
-```
-
-First DAG to write is the Iceberg maintenance one from F-13 — it's the highest-value, lowest-risk thing
-Airflow can do for this stack, and it's the kind of DAG that appears in every real lakehouse.
-
 ---
 
 ### 🟢 F-15 — Smaller items

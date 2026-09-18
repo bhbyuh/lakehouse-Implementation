@@ -49,8 +49,8 @@ x-airflow-common:
   # In order to add custom dependencies or upgrade provider distributions you can use your extended image.
   # Comment the image line, place your Dockerfile in the directory where you placed the docker-compose.yaml
   # and uncomment the "build" line below, Then run `docker-compose build` to build the images.
-  image: ${AIRFLOW_IMAGE_NAME:-apache/airflow:3.2.0}
-  # build: .
+  # image: ${AIRFLOW_IMAGE_NAME:-apache/airflow:3.2.0}
+  build: .
   env_file:
     - ${ENV_FILE_PATH:-.env}
   environment:
@@ -58,7 +58,7 @@ x-airflow-common:
     AIRFLOW__CORE__EXECUTOR: CeleryExecutor
     AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-postgres/airflow
-    AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql+psycopg2://airflow:airflow@postgres/airflow
+    AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql+psycopg2://airflow:airflow@airflow-postgres/airflow
     AIRFLOW__CELERY__BROKER_URL: redis://:@airflow-redis:6379/0
     AIRFLOW__CORE__FERNET_KEY: ${FERNET_KEY}
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
@@ -76,11 +76,25 @@ x-airflow-common:
     _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-}
     # The following line can be used to set a custom config file, stored in the local config folder
     AIRFLOW_CONFIG: '/opt/airflow/config/airflow.cfg'
+    # --- Connections as URIs: provisioned here, never typed into the UI (F-14) ---
+    AIRFLOW_CONN_SPARK_DEFAULT: 'spark://spark-master:7077'
+    AIRFLOW_CONN_TRINO_DEFAULT: 'trino://trino@trino:8080/iceberg'
+    AIRFLOW_CONN_MINIO_S3: 'aws://${MINIO_ROOT_USER:-admin}:${MINIO_ROOT_PASSWORD:-12345678}@?endpoint_url=http%3A%2F%2Fminio%3A9000'
+    # --- Same facts the main stack defines once in x-lakehouse-env (F-10) ---
+    S3_ENDPOINT: http://minio:9000
+    AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-admin}
+    AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-12345678}
+    AWS_REGION: ${AWS_REGION:-us-east-1}
+    SPARK_MASTER_URL: spark://spark-master:7077
+    HIVE_METASTORE_URI: thrift://hive-metastore:9083
+    ICEBERG_CATALOG: lakehouse
+    ICEBERG_WAREHOUSE: s3://buck1/warehouse
   volumes:
     - ${AIRFLOW_PROJ_DIR:-.}/dags:/opt/airflow/dags
     - ${AIRFLOW_PROJ_DIR:-.}/logs:/opt/airflow/logs
     - ${AIRFLOW_PROJ_DIR:-.}/config:/opt/airflow/config
     - ${AIRFLOW_PROJ_DIR:-.}/plugins:/opt/airflow/plugins
+    - ${AIRFLOW_PROJ_DIR:-.}/../code:/opt/airflow/code
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on:
     &airflow-common-depends-on
@@ -92,7 +106,7 @@ x-airflow-common:
     - lakehouse-network
 
 services:
-  airflow-postgres::
+  airflow-postgres:
     image: postgres:16
     environment:
       POSTGRES_USER: airflow
@@ -107,7 +121,7 @@ services:
       start_period: 5s
     restart: always
 
-  airflow-redis::
+  airflow-redis:
     # Redis is limited to 7.2-bookworm due to licencing change
     # https://redis.io/blog/redis-adopts-dual-source-available-licensing/
     image: redis:7.2-bookworm
