@@ -1,10 +1,24 @@
 <?xml version="1.0"?>
 <configuration>
-  <property><name>fs.s3a.endpoint</name><value>http://minio:9000</value></property>
-  <property><name>fs.s3a.access.key</name><value>admin</value></property>
-  <property><name>fs.s3a.secret.key</name><value>12345678</value></property>
+  <!-- Metastore backend database (moved here from SERVICE_OPTS) -->
+  <property><name>javax.jdo.option.ConnectionDriverName</name><value>org.postgresql.Driver</value></property>
+  <property><name>javax.jdo.option.ConnectionURL</name><value>jdbc:postgresql://postgres:5432/metastore</value></property>
+  <property><name>javax.jdo.option.ConnectionUserName</name><value>hive</value></property>
+  <property><name>javax.jdo.option.ConnectionPassword</name><value>hive</value></property>
+
+  <!-- Metastore service -->
+  <property><name>metastore.thrift.port</name><value>9083</value></property>
+  <property><name>hive.metastore.warehouse.dir</name><value>s3a://buck1/warehouse</value></property>
+  <property><name>hive.metastore.event.db.notification.api.auth</name><value>false</value></property>
+  <property><name>metastore.storage.schema.reader.impl</name>
+            <value>org.apache.hadoop.hive.metastore.SerDeStorageSchemaReader</value></property>
+
+  <!-- S3A / MinIO.
+       No access.key/secret.key here: S3A's default provider chain includes
+       EnvironmentVariableCredentialsProvider, which reads AWS_ACCESS_KEY_ID /
+       AWS_SECRET_ACCESS_KEY supplied by compose (x-s3-env).
+       No fs.s3a.impl: registered via META-INF/services in hadoop-aws since Hadoop 2.8. -->
+  <property><name>fs.s3a.endpoint</name><value>${env.S3_ENDPOINT}</value></property>
   <property><name>fs.s3a.path.style.access</name><value>true</value></property>
   <property><name>fs.s3a.connection.ssl.enabled</name><value>false</value></property>
-  <property><name>fs.s3a.impl</name><value>org.apache.hadoop.fs.s3a.S3AFileSystem</value></property>
-  <property><name>hive.metastore.warehouse.dir</name><value>s3a://buck1/warehouse</value></property>
 </configuration>

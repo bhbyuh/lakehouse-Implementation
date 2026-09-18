@@ -1,20 +1,7 @@
-FROM apache/hive:4.2.1
-
+FROM apache/hive:4.0.0
 USER root
-
-RUN curl -L \
-https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/3.3.6/hadoop-aws-3.3.6.jar \
--o /opt/hive/lib/hadoop-aws-3.3.6.jar
-
-
-RUN curl -L \
-https://repo1.maven.org/maven2/com/amazonaws/aws-java-sdk-bundle/1.12.262/aws-java-sdk-bundle-1.12.262.jar \
--o /opt/hive/lib/aws-java-sdk-bundle-1.12.262.jar
-
-
-RUN curl -L \
-https://jdbc.postgresql.org/download/postgresql-42.7.3.jar \
--o /opt/hive/lib/postgresql-42.7.3.jar
-
-
+# Use the S3A jars that match the image's own Hadoop 3.3.6
+RUN cp /opt/hadoop/share/hadoop/tools/lib/hadoop-aws-*.jar \
+       /opt/hadoop/share/hadoop/tools/lib/aws-java-sdk-bundle-*.jar /opt/hive/lib/
+ADD --chmod=644 https://jdbc.postgresql.org/download/postgresql-42.7.3.jar /opt/hive/lib/postgresql-42.7.3.jar
 USER hive

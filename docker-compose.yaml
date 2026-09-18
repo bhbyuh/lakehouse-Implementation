@@ -1,5 +1,19 @@
 version: "3.8"
 
+x-s3-env: &s3-env
+  S3_ENDPOINT: http://minio:9000
+  AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-admin}
+  AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-12345678}
+  AWS_REGION: ${AWS_REGION:-us-east-1}
+
+x-lakehouse-env: &lakehouse-env
+  <<: *s3-env
+  SPARK_MASTER_URL: spark://spark-master:7077
+  HIVE_METASTORE_URI: thrift://hive-metastore:9083
+  KAFKA_BOOTSTRAP: broker:9092
+  ICEBERG_CATALOG: lakehouse
+  ICEBERG_WAREHOUSE: s3://buck1/warehouse
+
 services:
   spark-master:
     build:
@@ -10,6 +24,8 @@ services:
       org.apache.spark.deploy.master.Master
     networks:
       - spark-network
+    environment:
+      <<: *lakehouse-env
     ports:
       - "8080:8080"
       - "7077:7077"
@@ -35,6 +51,7 @@ services:
     environment:
       SPARK_WORKER_CORES: 2
       SPARK_WORKER_MEMORY: 2g
+      <<: *lakehouse-env
     volumes:
       - ./code:/code
       - ./data:/data
@@ -57,6 +74,7 @@ services:
     environment:
       SPARK_WORKER_CORES: 2
       SPARK_WORKER_MEMORY: 2g
+      <<: *lakehouse-env
     volumes:
       - ./code:/code
       - ./data:/data
@@ -105,6 +123,8 @@ services:
     ports:
       - "8888:8888"
       - "4040:4040"
+    environment:
+      <<: *lakehouse-env
     volumes:
       - ./code:/app/code
       - ./data:/app/data
@@ -118,18 +138,19 @@ services:
     ports:
       - "9083:9083"
     environment:
+      <<: *s3-env
       SERVICE_NAME: metastore
       DB_DRIVER: postgres
       HIVE_CUSTOM_CONF_DIR: /hive_custom_conf
-      SERVICE_OPTS: >
-        -Djavax.jdo.option.ConnectionDriverName=org.postgresql.Driver
-        -Djavax.jdo.option.ConnectionURL=jdbc:postgresql://postgres:5432/metastore
-        -Djavax.jdo.option.ConnectionUserName=hive
-        -Djavax.jdo.option.ConnectionPassword=hive
+    depends_on:
+      postgres: {condition: service_healthy}
+    # healthcheck:
+    #   test: ["CMD-SHELL", "nc -z localhost 9083 || exit 1"]
+    #   interval: 10s
+    #   retries: 10
+    #   start_period: 40s
     volumes:
       - ./hive_custom_conf:/hive_custom_conf
-    depends_on:
-      - postgres
     networks:
       - spark-network
 
@@ -143,6 +164,12 @@ services:
       POSTGRES_DB: metastore
     ports:
       - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hive -d metastore"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
     networks:
       - spark-network
     volumes:
@@ -152,8 +179,12 @@ services:
     image: minio/minio
     command: server /data --console-address ":9001"
     environment:
-      - MINIO_ROOT_USER=admin
-      - MINIO_ROOT_PASSWORD=12345678
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-admin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-12345678}
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      retries: 12
     networks:
       - spark-network
     volumes:
@@ -168,9 +199,11 @@ services:
       - minio
     networks:
       - spark-network
+    environment:
+      <<: *s3-env
     entrypoint: >
       /bin/sh -c "
-      until (mc alias set myminio http://minio:9000 admin 12345678) do echo waiting && sleep 2; done;
+      until (mc alias set myminio $$S3_ENDPOINT $$AWS_ACCESS_KEY_ID $$AWS_SECRET_ACCESS_KEY) do echo waiting && sleep 2; done;
       mc mb --ignore-existing myminio/buck1;
       exit 0;
       "
@@ -182,9 +215,15 @@ services:
       - "8085:8080"
     volumes:
       - ./trino/etc:/etc/trino
+    environment:
+      <<: *s3-env
     depends_on:
-      - minio
-      - hive-metastore
+      hive-metastore: {condition: service_started}
+      createbuckets:  {condition: service_completed_successfully}
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:8080/v1/info | grep -q '\"starting\":false'"]
+      interval: 10s
+      retries: 20
     networks:
       - spark-network
 
