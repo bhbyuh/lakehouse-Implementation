@@ -21,4 +21,6 @@
   <property><name>fs.s3a.endpoint</name><value>${env.S3_ENDPOINT}</value></property>
   <property><name>fs.s3a.path.style.access</name><value>true</value></property>
   <property><name>fs.s3a.connection.ssl.enabled</name><value>false</value></property>
+  <property><name>fs.s3.impl</name><value>org.apache.hadoop.fs.s3a.S3AFileSystem</value></property>
+  <property><name>fs.AbstractFileSystem.s3.impl</name><value>org.apache.hadoop.fs.s3a.S3A</value></property>
 </configuration>
