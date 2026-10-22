@@ -36,10 +36,21 @@ services:
   spark-master:
     build:
       context: ./spark
+    container_name: spark-master
     hostname: spark-master
-    command: >
-      /opt/spark/bin/spark-class
-      org.apache.spark.deploy.master.Master
+    command: # command to run spark connect server
+      - bash
+      - -c
+      - |
+        /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master &  
+        sleep 10
+        exec /opt/spark/bin/spark-submit \
+          --class org.apache.spark.sql.connect.service.SparkConnectServer \
+          --name spark-connect \
+          --master spark://spark-master:7077 \
+          --conf spark.connect.grpc.binding.port=15002 \
+          --conf spark.cores.max=2 \
+          spark-internal
     networks:
       - spark-network
     environment:
@@ -47,6 +58,8 @@ services:
     ports:
       - "8080:8080"
       - "7077:7077"
+      - "15002:15002"  # Spark Connect
+      - "4041:4040" # to see session running in spark master
     volumes:
       - ./code:/code
       - ./data:/data
@@ -55,6 +68,7 @@ services:
   spark-worker-a:
     build:
       context: ./spark
+    container_name: spark-worker-a
     hostname: spark-worker-a
     command: >
       /opt/spark/bin/spark-class
@@ -78,6 +92,7 @@ services:
   spark-worker-b:
     build:
       context: ./spark
+    container_name: spark-worker-b
     hostname: spark-worker-b
     command: >
       /opt/spark/bin/spark-class
@@ -137,6 +152,7 @@ services:
   jupyter-local:
     build:
       context: ./spark
+    container_name: jupyter-local
     command: python3 -m jupyterlab --allow-root --ip=0.0.0.0 --no-browser --ServerApp.token=''
     ports:
       - "8888:8888"
@@ -195,6 +211,7 @@ services:
 
   minio:
     image: quay.io/minio/minio:latest
+    container_name: minio
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-admin}
@@ -213,6 +230,7 @@ services:
 
   createbuckets:
     image: quay.io/minio/mc:latest
+    container_name: minio-bucket
     depends_on:
       - minio
     networks:
