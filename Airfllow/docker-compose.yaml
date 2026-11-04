@@ -119,6 +119,8 @@ services:
       interval: 10s
       retries: 5
       start_period: 5s
+    networks:
+      - lakehouse-network
     restart: always
 
   airflow-redis:
@@ -133,6 +135,8 @@ services:
       timeout: 30s
       retries: 50
       start_period: 30s
+    networks:
+      - lakehouse-network
     restart: always
 
   airflow-apiserver:
