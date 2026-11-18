@@ -1,0 +1,11 @@
+# Python virtual environment
+.venv/
+__pycache__/
+*.pyc
+
+# Personal notes (local only)
+errors.txt
+SCENARIOS.md
+
+# macOS
+.DS_Store
